@@ -7,7 +7,7 @@ const app = express();
 
 const allowedOrigins = [
   "http://localhost:5173",
-  ""
+  "http://localhost:5000"
 ];
 app.use(
   cors({
@@ -27,6 +27,8 @@ app.use(express.json());
 mongoose.connect(process.env.MONGO_URL)
   .then(() => console.log('MongoDB connected'))
   .catch(err => console.error('MongoDB connection error:', err));
+
+app.get('/', (req, res) => res.json({ message: 'Recipe Maker API' }));
 
 app.use('/api/auth', require('./routes/userRoutes'));
 app.use('/api/recipes', require('./routes/recipeRoutes'));
