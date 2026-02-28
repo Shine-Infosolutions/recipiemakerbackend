@@ -5,12 +5,30 @@ const cors = require('cors');
 
 const app = express();
 
-app.use(cors());
+const allowedOrigins = [
+  "http://localhost:5173",
+  "http://localhost:5000"
+];
+app.use(
+  cors({
+    origin: function (origin, callback) {
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error("Not allowed by CORS"));
+      }
+    },
+    credentials: true,
+    optionsSuccessStatus: 204,
+  })
+);
 app.use(express.json());
 
 mongoose.connect(process.env.MONGO_URL)
   .then(() => console.log('MongoDB connected'))
   .catch(err => console.error('MongoDB connection error:', err));
+
+app.get('/', (req, res) => res.json({ message: 'Recipe Maker API' }));
 
 app.use('/api/auth', require('./routes/userRoutes'));
 app.use('/api/recipes', require('./routes/recipeRoutes'));
