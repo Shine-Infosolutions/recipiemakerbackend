@@ -15,9 +15,9 @@ const recipeSchema = new mongoose.Schema({
   instructions: String,
   cookTime: Number,
   servings: Number,
+  quantity: { type: Number, default: 1 },
+  status: { type: String, enum: ['cooking', 'cooked', 'cancelled'], default: 'cooking' },
   userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }
 }, { timestamps: true });
-
-recipeSchema.index({ title: 1, userId: 1 }, { unique: true });
 
 module.exports = mongoose.model('Recipe', recipeSchema);
