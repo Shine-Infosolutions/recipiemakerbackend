@@ -17,6 +17,7 @@ const recipeSchema = new mongoose.Schema({
   servings: Number,
   quantity: { type: Number, default: 1 },
   status: { type: String, enum: ['cooking', 'cooked', 'cancelled'], default: 'cooking' },
+  restockedIngredients: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Inventory' }],
   userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }
 }, { timestamps: true });
 
