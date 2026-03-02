@@ -35,7 +35,6 @@ app.get('/', (req, res) => res.json({ message: 'Recipe Maker API' }));
 app.use('/api/auth', require('./routes/userRoutes'));
 app.use('/api/recipes', require('./routes/recipeRoutes'));
 app.use('/api/inventory', require('./routes/inventoryRoutes'));
-app.use('/api/rawmaterials', require('./routes/rawMaterialRoutes'));
 
 const PORT = process.env.PORT || 5000;
 
