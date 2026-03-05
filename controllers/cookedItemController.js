@@ -62,7 +62,7 @@ exports.create = async (req, res) => {
 
 exports.updateStatus = async (req, res) => {
   try {
-    const { status, restockedIngredients } = req.body;
+    const { status, restockedIngredients, ingredientQuantities } = req.body;
     const item = await CookedItem.findById(req.params.id);
     
     if (!item) return res.status(404).json({ error: 'Item not found' });
@@ -83,8 +83,13 @@ exports.updateStatus = async (req, res) => {
     if (status === 'semi-finished' && restockedIngredients) {
       for (const ing of item.ingredients) {
         if (restockedIngredients.includes(ing.inventoryId.toString())) {
+          // Use custom quantity if provided, otherwise use original quantity
+          const restockQuantity = ingredientQuantities && ingredientQuantities[ing.inventoryId.toString()] 
+            ? ingredientQuantities[ing.inventoryId.toString()] 
+            : ing.quantity;
+          
           await Inventory.findByIdAndUpdate(ing.inventoryId, {
-            $inc: { quantity: ing.quantity }
+            $inc: { quantity: restockQuantity }
           });
         }
       }
@@ -94,7 +99,8 @@ exports.updateStatus = async (req, res) => {
         title: item.title,
         quantity: item.quantity,
         ingredients: item.ingredients,
-        restockedIngredients: restockedIngredients
+        restockedIngredients: restockedIngredients,
+        ingredientQuantities: ingredientQuantities
       });
       
       item.status = 'semi-finished';
