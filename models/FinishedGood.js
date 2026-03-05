@@ -10,7 +10,7 @@ const finishedGoodSchema = new mongoose.Schema({
     quantity: { type: Number, required: true },
     unit: { type: String, required: true }
   }],
-  userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true }
+  userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }
 }, { timestamps: true });
 
 module.exports = mongoose.model('FinishedGood', finishedGoodSchema);

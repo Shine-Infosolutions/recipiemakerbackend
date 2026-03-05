@@ -6,7 +6,7 @@ const Inventory = require('../models/Inventory');
 
 exports.getAll = async (req, res) => {
   try {
-    const items = await CookedItem.find({ userId: req.user.userId }).populate('ingredients.inventoryId');
+    const items = await CookedItem.find({}).populate('ingredients.inventoryId');
     res.json(items);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -50,8 +50,7 @@ exports.create = async (req, res) => {
         quantity: ing.quantity * (quantity || 1),
         unit: ing.unit
       })),
-      status: 'cooking',
-      userId: req.user.userId
+      status: 'cooking'
     });
 
     const populated = await CookedItem.findById(cookedItem._id).populate('ingredients.inventoryId');
@@ -73,8 +72,7 @@ exports.updateStatus = async (req, res) => {
         recipeId: item.recipeId,
         title: item.title,
         quantity: item.quantity,
-        ingredients: item.ingredients,
-        userId: item.userId
+        ingredients: item.ingredients
       });
       
       item.status = 'finished';
@@ -96,8 +94,7 @@ exports.updateStatus = async (req, res) => {
         title: item.title,
         quantity: item.quantity,
         ingredients: item.ingredients,
-        restockedIngredients: restockedIngredients,
-        userId: item.userId
+        restockedIngredients: restockedIngredients
       });
       
       item.status = 'semi-finished';

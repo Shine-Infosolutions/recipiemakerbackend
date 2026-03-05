@@ -2,7 +2,7 @@ const FinishedGood = require('../models/FinishedGood');
 
 exports.getAll = async (req, res) => {
   try {
-    const items = await FinishedGood.find({ userId: req.user.userId }).populate('ingredients.inventoryId');
+    const items = await FinishedGood.find({}).populate('ingredients.inventoryId');
     res.json(items);
   } catch (error) {
     res.status(500).json({ error: error.message });

@@ -12,7 +12,7 @@ exports.getOne = async (req, res) => {
 };
 
 exports.create = async (req, res) => {
-  const recipe = await Recipe.create({ ...req.body, userId: req.user.userId });
+  const recipe = await Recipe.create(req.body);
   const populated = await Recipe.findById(recipe._id).populate('ingredients.inventoryId');
   res.status(201).json(populated);
 };

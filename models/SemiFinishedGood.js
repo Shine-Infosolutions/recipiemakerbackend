@@ -11,7 +11,7 @@ const semiFinishedGoodSchema = new mongoose.Schema({
     unit: { type: String, required: true }
   }],
   restockedIngredients: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Inventory' }],
-  userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true }
+  userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }
 }, { timestamps: true });
 
 module.exports = mongoose.model('SemiFinishedGood', semiFinishedGoodSchema);

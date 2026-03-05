@@ -1,7 +1,7 @@
 const Inventory = require('../models/Inventory');
 
 exports.getAll = async (req, res) => {
-  const items = await Inventory.find({ userId: req.user.userId });
+  const items = await Inventory.find({});
   res.json(items);
 };
 
@@ -11,7 +11,7 @@ exports.getOne = async (req, res) => {
 };
 
 exports.create = async (req, res) => {
-  const item = await Inventory.create({ ...req.body, userId: req.user.userId });
+  const item = await Inventory.create(req.body);
   res.status(201).json(item);
 };
 
