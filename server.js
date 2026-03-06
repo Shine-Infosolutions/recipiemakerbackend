@@ -39,6 +39,7 @@ app.use('/api/cooked-items', require('./routes/cookedItemRoutes'));
 app.use('/api/finished-goods', require('./routes/finishedGoodRoutes'));
 app.use('/api/semi-finished-goods', require('./routes/semiFinishedGoodRoutes'));
 app.use('/api/stock-logs', require('./routes/stockLogRoutes'));
+app.use('/api/bulk', require('./routes/bulkDataRoutes'));
 
 const PORT = process.env.PORT || 5000;
 
