@@ -1,10 +1,12 @@
 const CookedItem = require('../models/CookedItem');
 const FinishedGood = require('../models/FinishedGood');
 const SemiFinishedGood = require('../models/SemiFinishedGood');
+const SemiFinished = require('../models/SemiFinishedGood');
 const AdjustedRecipe = require('../models/AdjustedRecipe');
 const Recipe = require('../models/Recipe');
 const Inventory = require('../models/Inventory');
 const { create: createStockLog } = require('./stockLogController');
+const { updateUsage: updateSemiFinishedUsage } = require('./semiFinishedGoodController');
 
 exports.getAll = async (req, res) => {
   try {
@@ -28,19 +30,40 @@ exports.create = async (req, res) => {
   try {
     const { recipeId, quantity, ingredients, isAdjusted } = req.body;
     const recipe = await Recipe.findById(recipeId)
-      .populate('ingredients.inventoryId')
       .populate('departmentId', 'name code');
     
     if (!recipe) return res.status(404).json({ error: 'Recipe not found' });
+
+    // Manually populate ingredients based on type
+    for (let ingredient of recipe.ingredients) {
+      if (ingredient.type === 'semi-finished') {
+        ingredient.inventoryId = await SemiFinished.findById(ingredient.inventoryId).select('name quantity');
+      } else {
+        ingredient.inventoryId = await Inventory.findById(ingredient.inventoryId).select('name quantity unit');
+      }
+    }
 
     // Use provided ingredients if adjusted, otherwise use recipe ingredients
     const ingredientsToUse = isAdjusted && ingredients ? ingredients : recipe.ingredients;
     
     // Check ingredients availability
     for (const ing of ingredientsToUse) {
-      const inventoryItem = isAdjusted ? 
-        await Inventory.findById(ing.inventoryId._id || ing.inventoryId) :
-        ing.inventoryId;
+      let inventoryItem;
+      
+      if (isAdjusted) {
+        // For adjusted recipes, determine type and get appropriate item
+        const originalIng = recipe.ingredients.find(orig => 
+          (orig.inventoryId._id || orig.inventoryId).toString() === (ing.inventoryId._id || ing.inventoryId).toString()
+        );
+        
+        if (originalIng?.type === 'semi-finished') {
+          inventoryItem = await SemiFinished.findById(ing.inventoryId._id || ing.inventoryId);
+        } else {
+          inventoryItem = await Inventory.findById(ing.inventoryId._id || ing.inventoryId);
+        }
+      } else {
+        inventoryItem = ing.inventoryId;
+      }
       
       if (!inventoryItem) {
         return res.status(400).json({ error: `Ingredient not found in inventory` });
@@ -54,13 +77,37 @@ exports.create = async (req, res) => {
 
     // Deduct ingredients from inventory
     for (const ing of ingredientsToUse) {
-      const inventoryId = ing.inventoryId._id || ing.inventoryId;
       const requiredQty = ing.quantity * (quantity || 1);
-      const oldInventory = await Inventory.findById(inventoryId);
+      let inventoryId, oldInventory;
       
-      await Inventory.findByIdAndUpdate(inventoryId, {
-        $inc: { quantity: -requiredQty }
-      });
+      if (isAdjusted) {
+        inventoryId = ing.inventoryId._id || ing.inventoryId;
+        const originalIng = recipe.ingredients.find(orig => 
+          (orig.inventoryId._id || orig.inventoryId).toString() === inventoryId.toString()
+        );
+        
+        if (originalIng?.type === 'semi-finished') {
+          oldInventory = await SemiFinished.findById(inventoryId);
+          await updateSemiFinishedUsage(inventoryId, requiredQty);
+        } else {
+          oldInventory = await Inventory.findById(inventoryId);
+          await Inventory.findByIdAndUpdate(inventoryId, {
+            $inc: { quantity: -requiredQty }
+          });
+        }
+      } else {
+        inventoryId = ing.inventoryId._id;
+        
+        if (ing.type === 'semi-finished') {
+          oldInventory = await SemiFinished.findById(inventoryId);
+          await updateSemiFinishedUsage(inventoryId, requiredQty);
+        } else {
+          oldInventory = await Inventory.findById(inventoryId);
+          await Inventory.findByIdAndUpdate(inventoryId, {
+            $inc: { quantity: -requiredQty }
+          });
+        }
+      }
       
       await createStockLog(
         inventoryId, 
