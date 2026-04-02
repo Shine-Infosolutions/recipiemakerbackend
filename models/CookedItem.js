@@ -10,7 +10,7 @@ const cookedItemSchema = new mongoose.Schema({
     quantity: { type: Number, required: true },
     unit: { type: String, required: true }
   }],
-  status: { type: String, enum: ['cooking', 'finished', 'semi-finished'], default: 'cooking' },
+  status: { type: String, enum: ['cooking', 'finished', 'semi-finished', 'cancelled'], default: 'cooking' },
   restockedIngredients: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Inventory' }],
   isAdjusted: { type: Boolean, default: false },
   userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }

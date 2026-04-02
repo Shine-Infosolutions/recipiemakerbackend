@@ -2,23 +2,22 @@ const Recipe = require('../models/Recipe');
 const Inventory = require('../models/Inventory');
 const SemiFinished = require('../models/SemiFinishedGood');
 
+const populateIngredients = async (recipes) => {
+  return Promise.all(recipes.map(async (recipe) => {
+    const ingredients = await Promise.all(recipe.ingredients.map(async (ing) => {
+      const item = ing.type === 'semi-finished'
+        ? await SemiFinished.findById(ing.inventoryId).select('name quantity').lean()
+        : await Inventory.findById(ing.inventoryId).select('name quantity unit').lean();
+      return { ...ing, inventoryId: item };
+    }));
+    return { ...recipe, ingredients };
+  }));
+};
+
 exports.getAll = async (req, res) => {
   try {
-    const recipes = await Recipe.find()
-      .populate('departmentId', 'name code');
-    
-    // Manually populate ingredients based on type
-    for (let recipe of recipes) {
-      for (let ingredient of recipe.ingredients) {
-        if (ingredient.type === 'semi-finished') {
-          ingredient.inventoryId = await SemiFinished.findById(ingredient.inventoryId).select('name quantity');
-        } else {
-          ingredient.inventoryId = await Inventory.findById(ingredient.inventoryId).select('name quantity unit');
-        }
-      }
-    }
-    
-    res.json(recipes);
+    const recipes = await Recipe.find().populate('departmentId', 'name code').lean();
+    res.json(await populateIngredients(recipes));
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -26,19 +25,10 @@ exports.getAll = async (req, res) => {
 
 exports.getOne = async (req, res) => {
   try {
-    const recipe = await Recipe.findById(req.params.id)
-      .populate('departmentId', 'name code');
-    
-    // Manually populate ingredients based on type
-    for (let ingredient of recipe.ingredients) {
-      if (ingredient.type === 'semi-finished') {
-        ingredient.inventoryId = await SemiFinished.findById(ingredient.inventoryId).select('name quantity');
-      } else {
-        ingredient.inventoryId = await Inventory.findById(ingredient.inventoryId).select('name quantity unit');
-      }
-    }
-    
-    res.json(recipe);
+    const recipe = await Recipe.findById(req.params.id).populate('departmentId', 'name code').lean();
+    if (!recipe) return res.status(404).json({ error: 'Recipe not found' });
+    const [populated] = await populateIngredients([recipe]);
+    res.json(populated);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -47,18 +37,8 @@ exports.getOne = async (req, res) => {
 exports.create = async (req, res) => {
   try {
     const recipe = await Recipe.create(req.body);
-    const populated = await Recipe.findById(recipe._id)
-      .populate('departmentId', 'name code');
-    
-    // Manually populate ingredients based on type
-    for (let ingredient of populated.ingredients) {
-      if (ingredient.type === 'semi-finished') {
-        ingredient.inventoryId = await SemiFinished.findById(ingredient.inventoryId).select('name quantity');
-      } else {
-        ingredient.inventoryId = await Inventory.findById(ingredient.inventoryId).select('name quantity unit');
-      }
-    }
-    
+    const fresh = await Recipe.findById(recipe._id).populate('departmentId', 'name code').lean();
+    const [populated] = await populateIngredients([fresh]);
     res.status(201).json(populated);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -67,19 +47,9 @@ exports.create = async (req, res) => {
 
 exports.update = async (req, res) => {
   try {
-    const recipe = await Recipe.findByIdAndUpdate(req.params.id, req.body, { new: true })
-      .populate('departmentId', 'name code');
-    
-    // Manually populate ingredients based on type
-    for (let ingredient of recipe.ingredients) {
-      if (ingredient.type === 'semi-finished') {
-        ingredient.inventoryId = await SemiFinished.findById(ingredient.inventoryId).select('name quantity');
-      } else {
-        ingredient.inventoryId = await Inventory.findById(ingredient.inventoryId).select('name quantity unit');
-      }
-    }
-    
-    res.json(recipe);
+    const recipe = await Recipe.findByIdAndUpdate(req.params.id, req.body, { new: true }).populate('departmentId', 'name code').lean();
+    const [populated] = await populateIngredients([recipe]);
+    res.json(populated);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

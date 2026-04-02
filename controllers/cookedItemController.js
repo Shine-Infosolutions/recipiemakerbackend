@@ -10,16 +10,22 @@ const { updateUsage: updateSemiFinishedUsage } = require('./semiFinishedGoodCont
 
 exports.getAll = async (req, res) => {
   try {
-    const items = await CookedItem.find({})
-      .populate({
+    const items = await CookedItem.find({}).populate({
         path: 'recipeId',
         select: 'title sellingPrice departmentId',
-        populate: {
-          path: 'departmentId',
-          select: 'name code'
-        }
-      })
-      .populate('ingredients.inventoryId');
+        populate: { path: 'departmentId', select: 'name code' }
+      }).lean();
+
+    // For each item, resolve ingredient names from both Inventory and SemiFinished
+    for (const item of items) {
+      for (const ing of item.ingredients) {
+        if (ing.name) continue; // already has name
+        const invItem = await Inventory.findById(ing.inventoryId).select('name').lean();
+        if (invItem) { ing.name = invItem.name; continue; }
+        const sfItem = await SemiFinished.findById(ing.inventoryId).select('name').lean();
+        if (sfItem) ing.name = sfItem.name;
+      }
+    }
     res.json(items);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -193,6 +199,27 @@ exports.updateStatus = async (req, res) => {
 
     // Get recipe department info for stock logs
     const recipe = await Recipe.findById(item.recipeId).populate('departmentId', 'name code');
+
+    if (status === 'cancelled') {
+      const recipe = await Recipe.findById(item.recipeId);
+      for (const ing of item.ingredients) {
+        // Check if this ingredient is a semi-finished item
+        const sfItem = await SemiFinished.findById(ing.inventoryId);
+        if (sfItem) {
+          await SemiFinished.findByIdAndUpdate(ing.inventoryId, { $inc: { quantity: ing.quantity } });
+          await createStockLog(ing.inventoryId, ing.name, 'Restocked', ing.quantity, sfItem.quantity, sfItem.quantity + ing.quantity, recipe?.departmentId, null);
+        } else {
+          const invItem = await Inventory.findById(ing.inventoryId);
+          if (invItem) {
+            await Inventory.findByIdAndUpdate(ing.inventoryId, { $inc: { quantity: ing.quantity } });
+            await createStockLog(ing.inventoryId, ing.name, 'Restocked', ing.quantity, invItem.quantity, invItem.quantity + ing.quantity, recipe?.departmentId, null);
+          }
+        }
+      }
+      item.status = 'cancelled';
+      await item.save();
+      return res.json({ message: 'Order cancelled and ingredients restocked' });
+    }
 
     if (status === 'finished') {
       const finishedGood = await FinishedGood.create({
